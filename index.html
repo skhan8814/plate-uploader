@@ -1,53 +1,90 @@
-<script>
-  const apiKey = "55ea2e8b65026274e8ad68fd83377bf804abaf2b";
-  const webhookUrl = "https://script.google.com/macros/s/AKfycbzwLrTgYaa4ccdWduRhp_gZHIYqr7C9bhB6CjluxXa98RKvsspeu0iwFN9QZbLNdTlV/exec";
-
-  document.getElementById("uploadForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    console.log("Upload started");
-
-    const fileInput = document.getElementById("plateImage");
-    const file = fileInput.files[0];
-    if (!file) {
-      console.log("No file selected");
-      return;
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Neighborhood Plate Checker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      text-align: center;
     }
+    input[type="file"] {
+      margin-top: 20px;
+      font-size: 16px;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 18px;
+    }
+    #result {
+      margin-top: 30px;
+      font-size: 24px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h2>Upload License Plate Image</h2>
+  <form id="uploadForm">
+    <input type="file" id="plateImage" accept="image/*" required />
+    <br /><br />
+    <button type="submit">Upload</button>
+  </form>
+  <p id="result"></p>
 
-    const formData = new FormData();
-    formData.append("upload", file);
+  <script>
+    const apiKey = "55ea2e8b65026274e8ad68fd83377bf804abaf2b"; // Your Plate Recognizer token
+    const webhookUrl = "https://script.google.com/macros/s/AKfycbzwLrTgYaa4ccdWduRhp_gZHIYqr7C9bhB6CjluxXa98RKvsspeu0iwFN9QZbLNdTlV/exec"; // Your Apps Script URL
 
-    try {
-      const response = await fetch("https://api.platerecognizer.com/v1/plate-reader/", {
-        method: "POST",
-        headers: {
-          Authorization: `Token ${apiKey}`
-        },
-        body: formData
-      });
+    document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-      const data = await response.json();
-      console.log("Plate Recognizer response:", data);
+      const fileInput = document.getElementById("plateImage");
+      const file = fileInput.files[0];
+      const resultDiv = document.getElementById("result");
+      resultDiv.innerText = "Processing...";
 
-      const plate = data.results?.[0]?.plate;
-      if (plate) {
-        document.getElementById("result").innerText = "Detected Plate: " + plate;
+      if (!file) {
+        resultDiv.innerText = "Please select a file.";
+        return;
+      }
 
-        const sheetResponse = await fetch(webhookUrl, {
+      const formData = new FormData();
+      formData.append("upload", file);
+
+      try {
+        const response = await fetch("https://api.platerecognizer.com/v1/plate-reader/", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json"
+            Authorization: `Token ${apiKey}`
           },
-          body: JSON.stringify({ plate })
+          body: formData
         });
 
-        const resultText = await sheetResponse.text();
-        document.getElementById("result").innerText += " → " + resultText;
-      } else {
-        document.getElementById("result").innerText = "No plate detected.";
+        const data = await response.json();
+        const plate = data.results?.[0]?.plate?.toUpperCase();
+
+        if (plate) {
+          // Send to Google Sheet and get approval status
+          const sheetResponse = await fetch(webhookUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ plate })
+          });
+
+          const status = await sheetResponse.text();
+          resultDiv.innerText = `Detected Plate: ${plate} → ${status}`;
+        } else {
+          resultDiv.innerText = "No plate detected.";
+        }
+      } catch (err) {
+        console.error(err);
+        resultDiv.innerText = "An error occurred. Please try again.";
       }
-    } catch (err) {
-      console.error("Error:", err);
-      document.getElementById("result").innerText = "Something went wrong.";
-    }
-  });
-</script>
+    });
+  </script>
+</body>
+</html>
