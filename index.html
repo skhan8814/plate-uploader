@@ -34,8 +34,8 @@
   <p id="result"></p>
 
   <script>
-    const apiKey = "55ea2e8b65026274e8ad68fd83377bf804abaf2b"; // Your Plate Recognizer token
-    const webhookUrl = "https://script.google.com/macros/s/AKfycbzwLrTgYaa4ccdWduRhp_gZHIYqr7C9bhB6CjluxXa98RKvsspeu0iwFN9QZbLNdTlV/exec"; // Your Apps Script URL
+    const apiKey = "55ea2e8b65026274e8ad68fd83377bf804abaf2b";
+    const webhookUrl = "https://script.google.com/macros/s/AKfycbzwLrTgYaa4ccdWduRhp_gZHIYqr7C9bhB6CjluxXa98RKvsspeu0iwFN9QZbLNdTlV/exec";
 
     document.getElementById("uploadForm").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -54,6 +54,7 @@
       formData.append("upload", file);
 
       try {
+        // Send image to Plate Recognizer
         const response = await fetch("https://api.platerecognizer.com/v1/plate-reader/", {
           method: "POST",
           headers: {
@@ -66,17 +67,12 @@
         const plate = data.results?.[0]?.plate?.toUpperCase();
 
         if (plate) {
-          // Send to Google Sheet and get approval status
-          const sheetResponse = await fetch(webhookUrl, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ plate })
-          });
+          // Send plate to Apps Script using simple form URL parameters
+          const url = `${webhookUrl}?plate=${encodeURIComponent(plate)}`;
+          const sheetResponse = await fetch(url); // No POST, just GET
 
-          const status = await sheetResponse.text();
-          resultDiv.innerText = `Detected Plate: ${plate} → ${status}`;
+          const resultText = await sheetResponse.text();
+          resultDiv.innerText = `Detected Plate: ${plate} → ${resultText}`;
         } else {
           resultDiv.innerText = "No plate detected.";
         }
