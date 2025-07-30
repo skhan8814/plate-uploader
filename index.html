@@ -35,7 +35,7 @@
 
   <script>
     const apiKey = "55ea2e8b65026274e8ad68fd83377bf804abaf2b";
-    const webhookUrl = "https://script.google.com/macros/s/AKfycbzUog-u48pWNONDnr94pAFzDO9XxtwDxs_qByJARtbnk6mEYqn85FsdQNqvvZnckPDR/exec"; // 👈 REPLACE THIS with your Web App URL
+    const webhookUrl = "https://script.google.com/macros/s/AKfycbzUog-u48pWNONDnr94pAFzDO9XxtwDxs_qByJARtbnk6mEYqn85FsdQNqvvZnckPDR/exec";
 
     document.getElementById("uploadForm").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -63,22 +63,32 @@
           body: formData
         });
 
+        if (!response.ok) {
+          throw new Error(`Plate API Error: ${response.status} ${response.statusText}`);
+        }
+
         const data = await response.json();
         const plate = data.results?.[0]?.plate?.toUpperCase();
 
-        if (plate) {
-          // Step 2: Call Google Apps Script to check against sheet
-          const url = `${webhookUrl}?plate=${encodeURIComponent(plate)}`;
-          const sheetResponse = await fetch(url, { method: "GET", mode: "cors" });
-          const resultText = await sheetResponse.text();
+       if (plate) {
+  // Step 2: Call Google Apps Script to check against sheet
+  const corsProxy = "https://corsproxy.io/?";
+const proxiedUrl = `${corsProxy}${encodeURIComponent(`${webhookUrl}?plate=${plate}`)}`;
+const sheetResponse = await fetch(proxiedUrl);
 
-          resultDiv.innerText = `Detected Plate: ${plate} → ${resultText}`;
-        } else {
-          resultDiv.innerText = "No plate detected.";
-        }
+if (!sheetResponse.ok) {
+  throw new Error(`Webhook Error: ${sheetResponse.status} ${sheetResponse.statusText}`);
+}
+
+const resultText = await sheetResponse.text();
+resultDiv.innerText = `Detected Plate: ${plate} → ${resultText}`;
+} else {
+  resultDiv.innerText = "No plate detected.";
+}
       } catch (err) {
-        console.error(err);
-        resultDiv.innerText = "An error occurred. Please try again.";
+  console.error("Detailed error:", err);
+  alert("Error: " + err.message);
+  resultDiv.innerText = `Error: ${err.message}`;
       }
     });
   </script>
